@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToDo App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Список Задач</h1>
+    <form id="task-form" class="form">
+      <input type="text" id="task-input" placeholder="Название задачи..." class="input" />
+      <input type="text" id="task-desc" placeholder="Описание задачи..." class="input" />
+      <button class="button">Добавить</button>
+    </form>
+
+    <ul id="task-list" class="task-list"></ul>
+  </div>
+
+  <script>
+    const taskForm = document.getElementById('task-form');
+    const taskInput = document.getElementById('task-input');
+    const taskList = document.getElementById('task-list');
+    const taskDesc = document.getElementById('task-desc');
+
+    async function fetchTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      renderTasks(tasks);
+    }
+
+    function renderTasks(tasks) {
+      taskList.innerHTML = '';
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = "task-item";
+        li.innerHTML = `
+          <span class="task-title ${task.completed ? 'completed' : ''}">${task.title}</span>
+          <span class="task-desc ${task.completed ? 'completed' : ''}">${task.desc}</span>
+          <div class="task-actions">
+            <button onclick="toggle(${task.id})" class="toggle">${task.completed ? '↩️' : '✅'}</button>
+            <button onclick="remove(${task.id})" class="delete">🗑️</button>
+            <button onclick="edit(${task.id})" class="edit">✏️</button>
+          </div>
+        `;
+        taskList.appendChild(li);
+      });
+    }
+
+    taskForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const title = taskInput.value.trim();
+      const desc = taskDesc.value.trim();
+      if (!title) return;
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, desc })
+      });
+      taskInput.value = '';
+      taskDesc.value = '';
+      fetchTasks();
+    });
+
+    async function remove(id) {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      fetchTasks();
+    }
+
+    async function toggle(id) {
+      await fetch(`/api/tasks/${id}/toggle`, { method: 'PATCH' });
+      fetchTasks();
+    }
+
+    async function edit(id) {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'GET' });
+      task = await res.json();
+      const newTitle = prompt("Введите новое название задачи: ", task.title)
+      if (newTitle === null) return;
+      const newDesc = prompt("Введите новое описание задачи", task.desc)
+      if (newDesc === null) return;
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ title: newTitle.trim(), desc: newDesc.trim() })
+      });
+      fetchTasks();
+    }
+
+    fetchTasks();
+  </script>
+</body>
+</html>
